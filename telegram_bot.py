@@ -2,6 +2,7 @@ from stock_analyzer import StockNewsAnalyzer
 from security_manager import SecurityManager
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram import Update
+import os
 
 class StockNewsTelegramBot:
     def __init__(self, telegram_token: str, azure_api_key: str, alpha_vantage_key: str):
