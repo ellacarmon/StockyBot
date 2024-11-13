@@ -3,6 +3,8 @@ from security_manager import SecurityManager
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram import Update
 import os
+from dotenv import load_dotenv
+from pathlib import Path
 
 class StockNewsTelegramBot:
     def __init__(self, telegram_token: str, azure_api_key: str, alpha_vantage_key: str):
@@ -192,15 +194,51 @@ class StockNewsTelegramBot:
         הפעלת הבוט
         """
         self.application.run_polling()
+def load_environment():
+    """
+    טעינת משתני הסביבה מקובץ .env
+    """
+    # טעינת הקובץ
+    env_path = Path('.') / '.env'
+    load_dotenv(dotenv_path=env_path)
+
+    # בדיקת המשתנים הנדרשים
+    required_vars = [
+        'TELEGRAM_TOKEN',
+        'AZURE_API_KEY',
+        'ALPHA_VANTAGE_KEY'
+    ]
+
+    missing_vars = [var for var in required_vars if not os.getenv(var)]
+    
+    if missing_vars:
+        raise ValueError(
+            f"Missing required environment variables: {', '.join(missing_vars)}\n"
+            f"Please check your .env file"
+        )
+
+    return {
+        'telegram_token': os.getenv('TELEGRAM_TOKEN'),
+        'azure_api_key': os.getenv('AZURE_API_KEY'),
+        'alpha_vantage_key': os.getenv('ALPHA_VANTAGE_KEY'),
+        'allowed_users': os.getenv('ALLOWED_USERS', '').split(','),
+        'daily_cost_limit': float(os.getenv('DAILY_COST_LIMIT', '1.0')),
+        'max_request_cost': float(os.getenv('MAX_REQUEST_COST', '0.1'))
+    }
+
 def main():
-    # קבלת הגדרות מהסביבה
-    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    AZURE_API_KEY = os.getenv("AZURE_API_KEY")
-    ALPHA_VANTAGE_KEY = os.getenv("ALPHA_VANTAGE_KEY")
-
-    if not all([TELEGRAM_TOKEN, AZURE_API_KEY, ALPHA_VANTAGE_KEY]):
-        raise ValueError("חסרים טוקנים! אנא הגדר את כל הטוקנים הנדרשים")
-
-    bot = StockNewsTelegramBot(TELEGRAM_TOKEN, AZURE_API_KEY, ALPHA_VANTAGE_KEY)
-    print("הבוט מופעל! 🚀")
-    bot.run()
+    try:
+        env = load_environment()
+        
+        bot = StockNewsTelegramBot(
+            telegram_token=env['telegram_token'],
+            azure_api_key=env['azure_api_key'],
+            alpha_vantage_key=env['alpha_vantage_key']
+        )
+        
+        print("הבוט מופעל! 🚀")
+        bot.run()
+        
+    except Exception as e:
+        print(f"שגיאה בהפעלת הבוט: {e}")
+        raise
