@@ -16,6 +16,7 @@ class StockNewsTelegramBot:
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("usage", self.usage_command))
+        self.application.add_handler(CommandHandler("admin", self.admin_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -49,7 +50,7 @@ class StockNewsTelegramBot:
         הצגת נתוני שימוש למשתמש
         """
         if not self.security.is_user_allowed(str(update.effective_user.id)):
-            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
+            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
             return
 
         usage = self.security.get_user_usage(str(update.effective_user.id))
@@ -189,6 +190,34 @@ class StockNewsTelegramBot:
             await processing_message.edit_text(f"שגיאה בביצוע הניתוח: {str(e)}")
         finally:
             context.user_data.clear()
+    async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self.security.is_user_admin(str(update.effective_user.id)):
+            await update.message.reply_text("מצטערת, אין לך הרשאה לבצע פעולה זו.")
+            return
+        if not context.args:
+            await update.message.reply_text("אנא ציין פעולה לביצוע.")
+            return
+        command = context.args[0]
+        if command == 'add':
+            if len(context.args) < 2:
+                await update.message.reply_text("אנא ציין את המשתמש שברצונך להוסיף.")
+                return
+            user_id = context.args[1]
+            if self.security.add_user(user_id, str(update.effective_user.id)):
+                await update.message.reply_text(f"המשתמש {user_id} הוסף בהצלחה.")
+            else:
+                await update.message.reply_text(f"המשתמש {user_id} כבר קיים ברשימת המשתמשים.")
+        elif command == 'remove':
+            if len(context.args) < 2:
+                await update.message.reply_text("אנא ציין את המשתמש שברצונך להסיר.")
+                return
+            user_id = context.args[1]
+            if self.security.remove_user(user_id, str(update.effective_user.id)):
+                await update.message.reply_text(f"המשתמש {user_id} הוסר בהצלחה.")
+            else:
+                await update.message.reply_text(f"המשתמש {user_id} לא נמצא ברשימת המשתמשים.")
+        else:
+            await update.message.reply_text(f" הפקודה {command}עדיין לא נתמכת.")
     def run(self):
         """
         הפעלת הבוט
