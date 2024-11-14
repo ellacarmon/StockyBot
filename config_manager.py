@@ -58,6 +58,17 @@ class ConfigManager:
             return True
         return False
 
+    def get_users(self) -> List[str]:
+        """
+        קבלת רשימת המשתמשים המורשים
+        """
+        return self.config["allowed_users"]
+
+    def get_admins(self) -> List[str]:
+        """
+        קבלת רשימת המנהלים
+        """
+        return self.config["admin_users"]
     def is_user_allowed(self, user_id: str) -> bool:
         """
         בדיקה האם המשתמש מורשה
