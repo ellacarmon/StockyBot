@@ -229,6 +229,8 @@ class StockNewsAnalyzer:
             "פולקסווגן": "VWAGY",
             "הונדה": "HMC",
             "פיוטשר": "FUTR",
+            "דיסני": "DIS",
+            "טראמפ": "DJT"
         }
 
         for company, symbol in common_tickers.items():
