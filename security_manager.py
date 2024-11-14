@@ -1,5 +1,6 @@
 from typing import Tuple
 from datetime import datetime
+from config_manager import ConfigManager
 import os
 
 class SecurityManager:
@@ -7,8 +8,10 @@ class SecurityManager:
         """
         מנהל האבטחה של הבוט
         """
+        self.config_manager = ConfigManager()
         # רשימת משתמשים מורשים (Telegram user IDs)
-        self.allowed_users = set(os.getenv("ALLOWED_USERS", "").split(","))
+        self.allowed_users = self.config_manager.get_users()
+        self.admin_users = self.config_manager.get_admins()
 
         # הגבלות שימוש
         self.daily_limit = float(os.getenv("DAILY_COST_LIMIT", "1.0"))  # הגבלת עלות יומית בדולרים
@@ -22,6 +25,12 @@ class SecurityManager:
         בדיקה האם המשתמש מורשה להשתמש בבוט
         """
         return str(user_id) in self.allowed_users
+
+    def is_user_admin(self, user_id: str) -> bool:
+        """
+        בדיקה האם המשתמש הוא מנהל
+        """
+        return str(user_id) in self.admin_users
 
     def reset_daily_usage_if_needed(self, user_id: str):
         """
@@ -67,3 +76,25 @@ class SecurityManager:
             'daily_cost': self.usage_data[user_id]['daily_cost'],
             'remaining_budget': self.daily_limit - self.usage_data[user_id]['daily_cost']
         }
+
+    def add_user(self, user_id: str, added_by: str = None) -> bool:
+        """
+        הוספת משתמש מורשה
+        """
+        if user_id not in self.allowed_users:
+            self.allowed_users.append(user_id)
+            self.config_manager.add_user(user_id, added_by)
+            self.config_manager.save_config()
+            return True
+        return False
+
+    def remove_user(self, user_id: str, removed_by: str = None) -> bool:
+        """
+        הסרת משתמש מורשה
+        """
+        if user_id in self.allowed_users:
+            self.allowed_users.remove(user_id)
+            self.config_manager.remove_user(user_id, removed_by)
+            self.config_manager.save_config()
+            return True
+        return False
