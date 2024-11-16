@@ -267,7 +267,7 @@ class StockNewsTelegramBot:
         """
         הסרת מניה מהרשימה
         """
-        if not self.security.is_admin(str(update.effective_user.id)):
+        if not self.security.is_user_admin(str(update.effective_user.id)):
             await update.message.reply_text("רק מנהלים יכולים להסיר מניות.")
             return
 
