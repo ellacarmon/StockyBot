@@ -42,7 +42,7 @@ class StockNewsTelegramBot:
             await update.message.reply_text("מצטערתת, אין לך הרשאה להשתמש בבוט זה.")
             return
 
-        is_admin = self.security.is_admin(str(update.effective_user.id))
+        is_admin = self.security.is_user_admin(str(update.effective_user.id))
 
         help_text = (
             "הנה רשימת הפקודות הזמינות:\n\n"
@@ -249,7 +249,7 @@ class StockNewsTelegramBot:
         """
         הוספת מניה חדשה
         """
-        if not self.security.is_admin(str(update.effective_user.id)):
+        if not self.security.is_user_admin(str(update.effective_user.id)):
             await update.message.reply_text("רק מנהלים יכולים להוסיף מניות חדשות.")
             return
 
