@@ -5,7 +5,7 @@ from typing import List, Dict, Union
 import requests
 import yfinance as yf
 from telegram.ext import ContextTypes
-
+from stocks_list_manager import StockListManager
 class StockNewsAnalyzer:
     def __init__(self, azure_api_key: str, alpha_vantage_key: str, azure_endpoint: str = "https://stockybot.openai.azure.com/"):
         self.client = AzureOpenAI(
@@ -15,6 +15,10 @@ class StockNewsAnalyzer:
         )
         self.alpha_vantage_key = alpha_vantage_key
         self.cost_calculator = CostCalculator()
+        self.stock_manager = StockListManager()
+
+    def get_ticker_from_text(self, text: str) -> str:
+        return self.stock_manager.get_ticker(text)
 
     def get_stock_info(self, ticker: str) -> Dict:
         """
@@ -157,83 +161,3 @@ class StockNewsAnalyzer:
 
         # ניקוי המידע השמור
         del context.user_data['pending_analysis']
-
-    def get_ticker_from_text(self, text: str) -> str:
-        common_tickers = {
-            "abbvie": "ABBV",
-            "אפל": "AAPL",
-            "מיקרוסופט": "MSFT",
-            "טסלה": "TSLA",
-            "מטא": "META",
-            "אמזון": "AMZN",
-            "נפטון": "NEPT",
-            "ניורון": "NUR",
-            "פייזר": "PFE",
-            "גוגל": "GOOGL",
-            "אלפאבט": "GOOGL",
-            "אלפאביט": "GOOGL",
-            "פייסבוק": "META",
-            "מטה": "META",
-            "טוויטר": "TWTR",
-            "טיקטוק": "TICK",
-            "נייק": "NKE",
-            "נייקי": "NKE",
-            "קוקה קולה": "KO",
-            "קוקה-קולה": "KO",
-            "וולמארט": "WMT",
-            "וול-מארט": "WMT",
-            "נטפליקס": "NFLX",
-            "בנק אוף אמריקה": "BAC",
-            "בנק אוף אמריקה": "BAC",
-            "פרוקטר אנד גמבל": "PG",
-            "פרוקטר & גמבל": "PG",
-            "וולגרינס": "WBA",
-            "וול-גרינס": "WBA",
-            "יונייטד הלת'קר": "UNH",
-            "יונייטד הלת'קר": "UNH",
-            "נבידיה": "NVDA",
-            "אנבידיה": "NVDA",
-            "אינטל": "INTC",
-            "קוואלקום": "QCOM",
-            "מודרנה": "MRNA",
-            "ביונטק": "BNTX",
-            "אסטרהזניקה": "AZN",
-            "ג'ונסון & ג'ונסון": "JNJ",
-            "יוניון פסיפיק": "UNP",
-            "מקדונלדס": "MCD",
-            "סטארבקס": "SBUX",
-            "לוקהיד מרטין": "LMT",
-            "רייטיאון": "RTX",
-            "טארגט": "TGT",
-            "סוני": "SONY",
-            "ריביאן": "RIVN",
-            "פייזר": "PFE",
-            "בואינג": "BA",
-            "שברון": "CVX",
-            "ברקשייר האת'ווי": "BRK.A",
-            "ברקשייר": "BRK.B",
-            "ביונדו": "BIDU",
-            "זום": "ZM",
-            "אובר": "UBER",
-            "ליפט": "LYFT",
-            "שופיפיי": "SHOP",
-            "סיילספורס": "CRM",
-            "בלאק רוק": "BLK",
-            "מודי'ס": "MCO",
-            "ג'י פי מורגן": "JPM",
-            "מורגן סטנלי": "MS",
-            "ג'נרל אלקטריק": "GE",
-            "פורד": "F",
-            "טויוטה": "TM",
-            "ניסאן": "NSANY",
-            "פולקסווגן": "VWAGY",
-            "הונדה": "HMC",
-            "פיוטשר": "FUTR",
-            "דיסני": "DIS",
-            "טראמפ": "DJT"
-        }
-
-        for company, symbol in common_tickers.items():
-            if company.lower() in text.lower():
-                return symbol
-        return None
