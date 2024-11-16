@@ -17,11 +17,14 @@ class StockNewsTelegramBot:
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("usage", self.usage_command))
         self.application.add_handler(CommandHandler("admin", self.admin_command))
+        self.application.add_handler(CommandHandler("stocks", self.stocks_command))
+        self.application.add_handler(CommandHandler("addstock", self.add_stock_command))
+        self.application.add_handler(CommandHandler("removestock", self.remove_stock_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self.security.is_user_allowed(str(update.effective_user.id)):
-            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
+            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
             return
 
         await update.message.reply_text(
@@ -35,22 +38,35 @@ class StockNewsTelegramBot:
             "/help - עזרה"
         )
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """
-        טיפול בפקודת /help
-        """
-        await update.message.reply_text(
-            "הנה כמה דברים שאני יכול לעשות:\n\n"
-            "1️⃣ לנתח חדשות על מניות\n"
-            "2️⃣ להסביר שינויים במחיר\n"
-            "3️⃣ לתת מידע על מגמות אחרונות\n\n"
-            "פשוט שאל אותי שאלה על מניה שמעניינת אותך!"
+        if not self.security.is_user_allowed(str(update.effective_user.id)):
+            await update.message.reply_text("מצטערתת, אין לך הרשאה להשתמש בבוט זה.")
+            return
+
+        is_admin = self.security.is_admin(str(update.effective_user.id))
+
+        help_text = (
+            "הנה רשימת הפקודות הזמינות:\n\n"
+            "📊 פקודות כלליות:\n"
+            "/stocks - הצגת רשימת המניות המוכרות\n"
+            "/usage - הצגת נתוני שימוש ועלויות\n"
+            "/help - הצגת עזרה זו\n"
         )
+
+        if is_admin:
+            help_text += (
+                "\n👑 פקודות מנהל:\n"
+                "/addstock שם-המניה SYMBOL - הוספת מניה חדשה\n"
+                "/removestock שם-המניה - הסרת מניה מהרשימה\n"
+                "/admin - ניהול משתמשים\n"
+            )
+
+        await update.message.reply_text(help_text)
     async def usage_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         הצגת נתוני שימוש למשתמש
         """
         if not self.security.is_user_allowed(str(update.effective_user.id)):
-            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
+            await update.message.reply_text("מצטערתת, אין לך הרשאה להשתמש בבוט זה.")
             return
 
         usage = self.security.get_user_usage(str(update.effective_user.id))
@@ -66,7 +82,7 @@ class StockNewsTelegramBot:
 
         # בדיקת הרשאות
         if not self.security.is_user_allowed(user_id):
-            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
+            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
             return
 
         user_text = update.message.text
@@ -83,7 +99,7 @@ class StockNewsTelegramBot:
         try:
             await self.prepare_analysis(update, context, ticker, user_text)
         except Exception as e:
-            await update.message.reply_text(f"מצטער, נתקלתי בשגיאה: {str(e)}")
+            await update.message.reply_text(f"מצטערת, נתקלתי בשגיאה: {str(e)}")
     async def prepare_analysis(self, update: Update, context: ContextTypes.DEFAULT_TYPE, ticker: str, question: str):
         try:
             # הכנת הניתוח כרגיל...
@@ -192,7 +208,7 @@ class StockNewsTelegramBot:
             context.user_data.clear()
     async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self.security.is_user_admin(str(update.effective_user.id)):
-            await update.message.reply_text("מצטערת, אין לך הרשאה לבצע פעולה זו.")
+            await update.message.reply_text("מצטערתת, אין לך הרשאה לבצע פעולה זו.")
             return
         if not context.args:
             await update.message.reply_text("אנא ציין פעולה לביצוע.")
@@ -218,6 +234,67 @@ class StockNewsTelegramBot:
                 await update.message.reply_text(f"המשתמש {user_id} לא נמצא ברשימת המשתמשים.")
         else:
             await update.message.reply_text(f" הפקודה {command}עדיין לא נתמכת.")
+    async def stocks_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        הצגת רשימת המניות המוכרות
+        """
+        if not self.security.is_user_allowed(str(update.effective_user.id)):
+            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
+            return
+
+        stocks_list = self.analyzer.stock_manager.get_all_stocks()
+        await update.message.reply_text(stocks_list)
+
+    async def add_stock_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        הוספת מניה חדשה
+        """
+        if not self.security.is_admin(str(update.effective_user.id)):
+            await update.message.reply_text("רק מנהלים יכולים להוסיף מניות חדשות.")
+            return
+
+        try:
+            # הפורמט צריך להיות: /addstock שם מניה SYMBOL
+            # לדוגמה: /addstock גוגל GOOGL
+            name = " ".join(context.args[:-1])  # כל המילים חוץ מהאחרונה הן השם
+            symbol = context.args[-1]  # המילה האחרונה היא הסימול
+
+            if not name or not symbol:
+                raise IndexError
+
+            success, message = self.analyzer.stock_manager.add_stock(name, symbol)
+            await update.message.reply_text(message)
+
+        except IndexError:
+            await update.message.reply_text(
+                "שימוש שגוי. הפורמט הנכון הוא:\n"
+                "/addstock שם-המניה SYMBOL\n"
+                "לדוגמה: /addstock גוגל GOOGL"
+            )
+
+    async def remove_stock_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        הסרת מניה מהרשימה
+        """
+        if not self.security.is_admin(str(update.effective_user.id)):
+            await update.message.reply_text("רק מנהלים יכולים להסיר מניות.")
+            return
+
+        try:
+            name = " ".join(context.args)  # כל הארגומנטים הם שם המניה
+            if not name:
+                raise IndexError
+
+            success, message = self.analyzer.stock_manager.remove_stock(name)
+            await update.message.reply_text(message)
+
+        except IndexError:
+            await update.message.reply_text(
+                "שימוש שגוי. הפורמט הנכון הוא:\n"
+                "/removestock שם-המניה\n"
+                "לדוגמה: /removestock גוגל"
+            )
+    
     def run(self):
         """
         הפעלת הבוט
