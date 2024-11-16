@@ -1,0 +1,6 @@
+{
+    "allowed_users": ["7238737237"],
+    "admin_users": ["7238737237"],
+    "daily_cost_limit": 1.0,
+    "max_request_cost": 0.1
+}

@@ -1,6 +1,6 @@
 from typing import Tuple
 from datetime import datetime
-from config_manager import ConfigManager
+from utils.config_manager import ConfigManager
 import os
 
 class SecurityManager:
@@ -9,15 +9,12 @@ class SecurityManager:
         מנהל האבטחה של הבוט
         """
         self.config_manager = ConfigManager()
-        # רשימת משתמשים מורשים (Telegram user IDs)
         self.allowed_users = self.config_manager.get_users()
         self.admin_users = self.config_manager.get_admins()
 
-        # הגבלות שימוש
-        self.daily_limit = float(os.getenv("DAILY_COST_LIMIT", "1.0"))  # הגבלת עלות יומית בדולרים
-        self.max_request_cost = float(os.getenv("MAX_REQUEST_COST", "0.1"))  # עלות מקסימלית לבקשה בודדת
+        self.daily_limit = float(os.getenv("DAILY_COST_LIMIT", "1.0"))
+        self.max_request_cost = float(os.getenv("MAX_REQUEST_COST", "0.1"))
 
-        # מעקב שימוש
         self.usage_data = {}  # {user_id: {'daily_cost': 0.0, 'last_reset': datetime}}
 
     def is_user_allowed(self, user_id: str) -> bool:

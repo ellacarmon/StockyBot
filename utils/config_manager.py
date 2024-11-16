@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 
 
 class ConfigManager:
-    def __init__(self, config_file: str = "config.json"):
+    def __init__(self, config_file: str = "settings/config.json"):
         self.config_file = config_file
         self.config = self._load_config()
 

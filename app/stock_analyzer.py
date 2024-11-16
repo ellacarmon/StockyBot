@@ -1,11 +1,13 @@
 from openai import AzureOpenAI
 from telegram import Update
-from cost_calculator import CostCalculator
+from utils.cost_calculator import CostCalculator
 from typing import List, Dict, Union
 import requests
 import yfinance as yf
 from telegram.ext import ContextTypes
-from stocks_list_manager import StockListManager
+from utils.stocks_list_manager import StockListManager
+
+
 class StockNewsAnalyzer:
     def __init__(self, azure_api_key: str, alpha_vantage_key: str, azure_endpoint: str = "https://stockybot.openai.azure.com/"):
         self.client = AzureOpenAI(

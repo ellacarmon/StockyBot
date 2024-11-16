@@ -1,10 +1,10 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import os
 import json
 import yfinance as yf
 
 class StockListManager:
-    def __init__(self, config_file: str = "stocks_config.json"):
+    def __init__(self, config_file: str = "settings/stocks_config.json"):
         self.config_file = config_file
         self.stocks = self._load_stocks()
 
@@ -103,7 +103,7 @@ class StockListManager:
         except Exception as e:
             print(f"שגיאה בשמירת רשימת המניות: {e}")
 
-    def add_stock(self, name: str, symbol: str) -> bool:
+    def add_stock(self, name: str, symbol: str) ->  Tuple[bool, str]:
         """
         הוספת מניה חדשה
         """
@@ -123,7 +123,7 @@ class StockListManager:
         self.save_stocks()
         return True, f"המניה {name} ({symbol}) נוספה בהצלחה"
 
-    def remove_stock(self, name: str) -> bool:
+    def remove_stock(self, name: str) -> Tuple[bool, str]:
         """
         הסרת מניה מהרשימה
         """

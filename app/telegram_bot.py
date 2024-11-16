@@ -1,5 +1,5 @@
-from stock_analyzer import StockNewsAnalyzer
-from security_manager import SecurityManager
+from app.stock_analyzer import StockNewsAnalyzer
+from utils.security_manager import SecurityManager
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram import Update
 import os
@@ -12,7 +12,6 @@ class StockNewsTelegramBot:
         self.analyzer = StockNewsAnalyzer(azure_api_key, alpha_vantage_key)
         self.security = SecurityManager()
 
-        # הוספת פקודות
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("usage", self.usage_command))
@@ -66,7 +65,7 @@ class StockNewsTelegramBot:
         הצגת נתוני שימוש למשתמש
         """
         if not self.security.is_user_allowed(str(update.effective_user.id)):
-            await update.message.reply_text("מצטערתת, אין לך הרשאה להשתמש בבוט זה.")
+            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
             return
 
         usage = self.security.get_user_usage(str(update.effective_user.id))
@@ -80,7 +79,6 @@ class StockNewsTelegramBot:
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = str(update.effective_user.id)
 
-        # בדיקת הרשאות
         if not self.security.is_user_allowed(user_id):
             await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
             return
@@ -102,7 +100,6 @@ class StockNewsTelegramBot:
             await update.message.reply_text(f"מצטערת, נתקלתי בשגיאה: {str(e)}")
     async def prepare_analysis(self, update: Update, context: ContextTypes.DEFAULT_TYPE, ticker: str, question: str):
         try:
-            # הכנת הניתוח כרגיל...
             stock_info = self.analyzer.get_stock_info(ticker)
             news = self.analyzer.fetch_news(ticker)
 
@@ -126,11 +123,9 @@ class StockNewsTelegramBot:
 
 אנא תן תשובה מקיפה בעברית שמסבירה את המצב בצורה ברורה."""
 
-            # חישוב עלות משוערת
             input_tokens = self.analyzer.cost_calculator.estimate_tokens(prompt)
             cost_estimate = self.analyzer.cost_calculator.calculate_cost(input_tokens)
 
-            # בדיקת מגבלות אבטחה
             can_request, message = self.security.can_make_request(
                 str(update.effective_user.id),
                 cost_estimate['total_cost']
@@ -140,17 +135,14 @@ class StockNewsTelegramBot:
                 await update.message.reply_text(f"❌ {message}")
                 return
 
-            # שמירת המידע בקונטקסט
             context.user_data['pending_analysis'] = {
                 'prompt': prompt,
                 'cost_estimate': cost_estimate
             }
             context.user_data['awaiting_confirmation'] = True
 
-            # קבלת נתוני שימוש עדכניים
             usage = self.security.get_user_usage(str(update.effective_user.id))
 
-            # שליחת בקשת אישור למשתמש
             confirmation_message = (
                 f"📊 הערכת עלויות:\n"
                 f"• טוקנים בשאילתה: {cost_estimate['input_tokens']:,}\n"
@@ -187,7 +179,6 @@ class StockNewsTelegramBot:
                 response.usage.completion_tokens
             )
 
-            # עדכון נתוני שימוש
             self.security.update_usage(str(update.effective_user.id), actual_cost['total_cost'])
             usage = self.security.get_user_usage(str(update.effective_user.id))
 
@@ -256,8 +247,8 @@ class StockNewsTelegramBot:
         try:
             # הפורמט צריך להיות: /addstock שם מניה SYMBOL
             # לדוגמה: /addstock גוגל GOOGL
-            name = " ".join(context.args[:-1])  # כל המילים חוץ מהאחרונה הן השם
-            symbol = context.args[-1]  # המילה האחרונה היא הסימול
+            name = " ".join(context.args[:-1])
+            symbol = context.args[-1]
 
             if not name or not symbol:
                 raise IndexError
@@ -281,7 +272,7 @@ class StockNewsTelegramBot:
             return
 
         try:
-            name = " ".join(context.args)  # כל הארגומנטים הם שם המניה
+            name = " ".join(context.args)
             if not name:
                 raise IndexError
 
@@ -304,11 +295,9 @@ def load_environment():
     """
     טעינת משתני הסביבה מקובץ .env
     """
-    # טעינת הקובץ
     env_path = Path('.') / '.env'
     load_dotenv(dotenv_path=env_path)
 
-    # בדיקת המשתנים הנדרשים
     required_vars = [
         'TELEGRAM_TOKEN',
         'AZURE_API_KEY',
