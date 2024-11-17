@@ -1,4 +1,5 @@
 from app.stock_analyzer import StockNewsAnalyzer
+from app.stock_events_analyzer import StockEventsAnalyzer
 from utils.security_manager import SecurityManager
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram import Update
@@ -11,6 +12,7 @@ class StockNewsTelegramBot:
         self.application = Application.builder().token(telegram_token).build()
         self.analyzer = StockNewsAnalyzer(azure_api_key, alpha_vantage_key)
         self.security = SecurityManager()
+        self.events_analyzer = StockEventsAnalyzer()
 
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
@@ -19,6 +21,8 @@ class StockNewsTelegramBot:
         self.application.add_handler(CommandHandler("stocks", self.stocks_command))
         self.application.add_handler(CommandHandler("addstock", self.add_stock_command))
         self.application.add_handler(CommandHandler("removestock", self.remove_stock_command))
+        self.application.add_handler(CommandHandler("earnings", self.earnings_command))
+        self.application.add_handler(CommandHandler("dividends", self.dividends_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -36,22 +40,90 @@ class StockNewsTelegramBot:
             "/usage - הצגת נתוני שימוש ותקציב\n"
             "/help - עזרה"
         )
-    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def earnings_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        הצגת מידע על earnings
+        """
         if not self.security.is_user_allowed(str(update.effective_user.id)):
-            await update.message.reply_text("מצטערתת, אין לך הרשאה להשתמש בבוט זה.")
+            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
             return
 
-        is_admin = self.security.is_user_admin(str(update.effective_user.id))
+        try:
+            args = context.args
+            if not args:
+                await update.message.reply_text(
+                    "אנא ציין את שם המניה. לדוגמה:\n"
+                    "/earnings אפל\n"
+                    "או\n"
+                    "/earnings AAPL"
+                )
+                return
+
+            stock_name = " ".join(args)
+            ticker = self.analyzer.get_ticker_from_text(stock_name)
+
+            if not ticker:
+                await update.message.reply_text("לא הצלחתי לזהות את המניה המבוקשת.")
+                return
+
+            processing_message = await update.message.reply_text("מחפש מידע על Earnings... ⏳")
+            earnings_info = await self.events_analyzer.get_earnings_info(ticker)
+            await processing_message.edit_text(earnings_info)
+
+        except Exception as e:
+            await update.message.reply_text(f"שגיאה בקבלת מידע על earnings: {str(e)}")
+
+    async def dividends_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        הצגת מידע על דיבידנדים
+        """
+        if not self.security.is_user_allowed(str(update.effective_user.id)):
+            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
+            return
+
+        try:
+            args = context.args
+            if not args:
+                await update.message.reply_text(
+                    "אנא ציין את שם המניה. לדוגמה:\n"
+                    "/dividends אפל\n"
+                    "או\n"
+                    "/dividends AAPL"
+                )
+                return
+
+            stock_name = " ".join(args)
+            ticker = self.analyzer.get_ticker_from_text(stock_name)
+
+            if not ticker:
+                await update.message.reply_text("לא הצלחתי לזהות את המניה המבוקשת.")
+                return
+
+            processing_message = await update.message.reply_text("מחפש מידע על דיבידנדים... ⏳")
+            dividend_info = await self.events_analyzer.get_dividend_info(ticker)
+            await processing_message.edit_text(dividend_info)
+
+        except Exception as e:
+            await update.message.reply_text(f"שגיאה בקבלת מידע על דיבידנדים: {str(e)}")
+
+    async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self.security.is_user_allowed(str(update.effective_user.id)):
+            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
+            return
 
         help_text = (
             "הנה רשימת הפקודות הזמינות:\n\n"
-            "📊 פקודות כלליות:\n"
+            "📊 מידע על מניות:\n"
             "/stocks - הצגת רשימת המניות המוכרות\n"
+            "/earnings [מניה] - מידע על earnings\n"
+            "/dividends [מניה] - מידע על דיבידנדים\n"
             "/usage - הצגת נתוני שימוש ועלויות\n"
             "/help - הצגת עזרה זו\n"
+            "\n"
+            "לקבלת הרשאות להשתמש בבוט נא לשלוח מייל ל stockybots@gmail.com"
         )
 
-        if is_admin:
+        if self.security.is_user_admin(str(update.effective_user.id)):
             help_text += (
                 "\n👑 פקודות מנהל:\n"
                 "/addstock שם-המניה SYMBOL - הוספת מניה חדשה\n"
