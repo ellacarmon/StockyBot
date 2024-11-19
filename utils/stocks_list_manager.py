@@ -114,7 +114,7 @@ class StockListManager:
         try:
             stock = yf.Ticker(symbol)
             # בדיקה בסיסית שהמניה קיימת
-            if stock.info.get('regularMarketPrice') is None:
+            if stock.info.get('quoteType') is None:
                 return False, "סימול המניה לא נמצא"
         except Exception:
             return False, "סימול המניה לא תקין"
