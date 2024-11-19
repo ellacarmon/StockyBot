@@ -1,5 +1,6 @@
 from app.stock_analyzer import StockNewsAnalyzer
 from app.stock_events_analyzer import StockEventsAnalyzer
+from app.institutional_holdings import InstitutionalHoldingsAnalyzer
 from utils.security_manager import SecurityManager
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram import Update
@@ -13,6 +14,7 @@ class StockNewsTelegramBot:
         self.analyzer = StockNewsAnalyzer(azure_api_key, alpha_vantage_key)
         self.security = SecurityManager()
         self.events_analyzer = StockEventsAnalyzer()
+        self.institutional_analyzer = InstitutionalHoldingsAnalyzer()
 
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
@@ -23,6 +25,7 @@ class StockNewsTelegramBot:
         self.application.add_handler(CommandHandler("removestock", self.remove_stock_command))
         self.application.add_handler(CommandHandler("earnings", self.earnings_command))
         self.application.add_handler(CommandHandler("dividends", self.dividends_command))
+        self.application.add_handler(CommandHandler("holdings", self.holdings_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -40,6 +43,39 @@ class StockNewsTelegramBot:
             "/usage - הצגת נתוני שימוש ותקציב\n"
             "/help - עזרה"
         )
+
+    async def holdings_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """
+        פקודה להצגת מחזיקים מוסדיים
+        """
+        if not self.security.is_user_allowed(str(update.effective_user.id)):
+            await update.message.reply_text("מצטער, אין לך הרשאה להשתמש בבוט זה.")
+            return
+
+        try:
+            args = context.args
+            if not args:
+                await update.message.reply_text(
+                    "אנא ציין את שם המניה. לדוגמה:\n"
+                    "/holdings אפל\n"
+                    "או\n"
+                    "/holdings AAPL"
+                )
+                return
+
+            stock_name = " ".join(args)
+            ticker = self.analyzer.get_ticker_from_text(stock_name)
+
+            if not ticker:
+                await update.message.reply_text("לא הצלחתי לזהות את המניה המבוקשת.")
+                return
+
+            processing_message = await update.message.reply_text("מחפש מידע על מחזיקים מוסדיים... ⏳")
+            holdings_info = await self.institutional_analyzer.get_institutional_holdings(ticker)
+            await processing_message.edit_text(holdings_info)
+
+        except Exception as e:
+            await update.message.reply_text(f"שגיאה בקבלת מידע על מחזיקים מוסדיים: {str(e)}")
     async def earnings_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         הצגת מידע על earnings
@@ -117,13 +153,12 @@ class StockNewsTelegramBot:
             "/stocks - הצגת רשימת המניות המוכרות\n"
             "/earnings [מניה] - מידע על earnings\n"
             "/dividends [מניה] - מידע על דיבידנדים\n"
+            "/holdings [מניה] - מידע על מחזיקים מוסדיים\n"
             "/usage - הצגת נתוני שימוש ועלויות\n"
             "/help - הצגת עזרה זו\n"
-            "\n"
-            "לקבלת הרשאות להשתמש בבוט נא לשלוח מייל ל stockybots@gmail.com"
         )
 
-        if self.security.is_user_admin(str(update.effective_user.id)):
+        if self.security.is_admin(str(update.effective_user.id)):
             help_text += (
                 "\n👑 פקודות מנהל:\n"
                 "/addstock שם-המניה SYMBOL - הוספת מניה חדשה\n"
