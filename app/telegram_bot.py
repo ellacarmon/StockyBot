@@ -26,6 +26,7 @@ class StockNewsTelegramBot:
         self.application.add_handler(CommandHandler("earnings", self.earnings_command))
         self.application.add_handler(CommandHandler("dividends", self.dividends_command))
         self.application.add_handler(CommandHandler("holdings", self.holdings_command))
+        self.application.add_handler(CommandHandler("52week", self.week52_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -167,6 +168,38 @@ class StockNewsTelegramBot:
             )
 
         await update.message.reply_text(help_text)
+    async def week52_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self.security.is_user_allowed(str(update.effective_user.id)):
+            await update.message.reply_text("מצטערת, אין לך הרשאה להשתמש בבוט זה.")
+            return
+
+        if len(context.args) == 0:
+            await update.message.reply_text("אנא ספק שם מניה או סימבול.")
+            return
+
+        ticker = context.args[0]
+        stock_info = self.analyzer.get_stock_info(ticker)
+
+        if not stock_info:
+            await update.message.reply_text(f"לא הצלחתי למצוא מידע על {ticker}.")
+            return
+
+        current_price = stock_info.get("current_price")
+        week52_high = stock_info.get("fiftyTwoWeekHigh")
+        week52_low = stock_info.get("fiftyTwoWeekLow")
+
+        if current_price is None or week52_high is None or week52_low is None:
+            await update.message.reply_text(f"לא הצלחתי למצוא מידע על טווח 52 שבועות עבור {ticker}.")
+            return
+
+        response = (
+            f"📊 מידע על {stock_info['name']} ({ticker}):\n"
+            f"מחיר נוכחי: ${current_price}\n"
+            f"גבוה 52 שבועות: ${week52_high}\n"
+            f"נמוך 52 שבועות: ${week52_low}\n"
+        )
+        await update.message.reply_text(response)
+
     async def usage_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         הצגת נתוני שימוש למשתמש

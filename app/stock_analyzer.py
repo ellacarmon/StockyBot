@@ -32,7 +32,9 @@ class StockNewsAnalyzer:
             "name": info.get("longName", ticker),
             "current_price": info.get("currentPrice"),
             "previous_close": info.get("previousClose"),
-            "percent_change": info.get("regularMarketChangePercent")
+            "percent_change": info.get("regularMarketChangePercent"),
+            "fiftyTwoWeekHigh": info.get("fiftyTwoWeekHigh"),
+            "fiftyTwoWeekLow": info.get("fiftyTwoWeekLow")
         }
 
     def fetch_news(self, ticker: str) -> List[Dict]:
